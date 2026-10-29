@@ -10,11 +10,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
+      - run: unzip -q -o ./*.zip -d src
       - run: yes | sdkmanager --licenses > /dev/null || true
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: 8.14.3 }
       - run: gradle assembleRelease --no-daemon
+        working-directory: src/MoviePlay4K-Android
       - uses: actions/upload-artifact@v4
         with:
           name: MoviePlay4K-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: src/MoviePlay4K-Android/app/build/outputs/apk/release/*.apk

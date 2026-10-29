@@ -84,7 +84,7 @@ data class Item(val uri: Uri, val name: String, val subs: List<Sub> = emptyList(
 enum class Panel { Main, Speed, Subs, Audio, Fit, More, Info }
 
 private val Accent = Color(0xFF8E7DFF)
-private val Glass = Color(0x99181620)
+private val Glass = Color(0x66141218)
 private val SPEEDS = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 3f, 4f)
 private val FITS = listOf("Fit", "Fill (crop)", "Stretch")
 private val MEDIA_EXT = setOf(
@@ -528,40 +528,40 @@ class MainActivity : ComponentActivity() {
 
             AnimatedVisibility(controls && !inPip, enter = fadeIn(), exit = fadeOut()) {
                 Box(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxWidth().height(150.dp).background(Brush.verticalGradient(listOf(Color(0xA6000000), Color.Transparent))))
-                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(280.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xC0000000)))))
+                    Box(Modifier.fillMaxWidth().height(90.dp).background(Brush.verticalGradient(listOf(Color(0x80000000), Color.Transparent))))
+                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (land) 150.dp else 260.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xA6000000)))))
 
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 12.dp)) {
                         // top bar
                         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (land) IconButton({ if (fullscreen) fullscreen = false else stopPlayback() }) {
-                                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(30.dp))
+                                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(22.dp))
                             } else GlassBtn(Icons.AutoMirrored.Rounded.ArrowBack, "Back") {
                                 if (fullscreen) fullscreen = false else stopPlayback()
                             }
                             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                                 Text(
                                     items.getOrNull(current)?.name?.substringBeforeLast('.') ?: "", color = Color.White,
-                                    fontSize = if (wide) 24.sp else 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
+                                    fontSize = if (land) 16.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis
                                 )
-                                if (!land) Text(meta, color = Color(0xDDFFFFFF), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(meta, color = Color(0xB3FFFFFF), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             Column(
-                                Modifier.height(48.dp).clip(RoundedCornerShape(24.dp)).background(Glass)
-                                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp))
-                                    .clickable { panel = Panel.Info }.padding(horizontal = 14.dp),
+                                Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(Glass)
+                                    .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(18.dp))
+                                    .clickable { panel = Panel.Info }.padding(horizontal = 12.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                             ) {
-                                Text(q, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 18.sp)
-                                Text(hdr ?: "ORIGINAL", color = Color(0xCCFFFFFF), fontSize = 9.sp, lineHeight = 10.sp)
+                                Text(q, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 14.sp)
+                                Text(hdr ?: "ORIGINAL", color = Color(0xB3FFFFFF), fontSize = 7.sp, lineHeight = 8.sp)
                             }
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(6.dp))
                             GlassBtn(Icons.Rounded.MoreVert, "More") { panel = Panel.Main }
                         }
 
                         // side sliders
                         run {
-                            if (land) FlatSlider(bright, { bright = it }, Icons.Rounded.WbSunny, Modifier.align(Alignment.CenterStart).offset(y = (-30).dp))
+                            if (land) FlatSlider(bright, { bright = it }, Icons.Rounded.WbSunny, Modifier.align(Alignment.CenterStart).offset(y = (-20).dp))
                             else VSlider(
                                 bright, { bright = it }, Icons.Rounded.WbSunny,
                                 Modifier.align(Alignment.CenterStart)
@@ -573,7 +573,7 @@ class MainActivity : ComponentActivity() {
                                 val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                                 audio.setStreamVolume(AudioManager.STREAM_MUSIC, (it * max).toInt(), 0)
                             }
-                            if (land) FlatSlider(if (muted) 0f else vol, volSet, volIcon, Modifier.align(Alignment.CenterEnd).offset(y = (-30).dp))
+                            if (land) FlatSlider(if (muted) 0f else vol, volSet, volIcon, Modifier.align(Alignment.CenterEnd).offset(y = (-20).dp))
                             else VSlider(
                                 if (muted) 0f else vol,
                                 {
@@ -611,35 +611,36 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // bottom: seek + dock
-                        if (land) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (land) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             val shown = drag ?: if (dur > 0) pos.toFloat() / dur else 0f
                             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(fmt(if (drag != null) (drag!! * dur).toLong() else pos), color = Color.White, fontSize = 15.sp, modifier = Modifier.width(60.dp))
+                                Text(fmt(if (drag != null) (drag!! * dur).toLong() else pos), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(50.dp))
                                 Slider(
                                     value = shown.coerceIn(0f, 1f),
                                     onValueChange = { drag = it },
                                     onValueChangeFinished = { drag?.let { f -> if (dur > 0) player.seekTo((f * dur).toLong()) }; drag = null },
-                                    modifier = Modifier.weight(1f),
-                                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color(0xFF9B8CFF), inactiveTrackColor = Color(0x59FFFFFF))
+                                    modifier = Modifier.weight(1f).height(24.dp),
+                                    thumb = { SliderDefaults.Thumb(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, thumbSize = androidx.compose.ui.unit.DpSize(12.dp, 12.dp), colors = SliderDefaults.colors(thumbColor = Color.White)) },
+                                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color(0xFF9B8CFF), inactiveTrackColor = Color(0x40FFFFFF))
                                 )
-                                Text(fmt(dur), color = Color.White, fontSize = 15.sp, modifier = Modifier.width(66.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                                Text(fmt(dur), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(54.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 GlassBtn(Icons.AutoMirrored.Rounded.PlaylistPlay, "Playlist") { playlistOpen = true }
                                 GlassBtn(Icons.Rounded.SkipPrevious, "Previous") {
                                     if (player.currentPosition > 5000 || current <= 0) player.seekTo(0) else playIndex(current - 1)
                                 }
-                                GlassBtn(Icons.Rounded.Replay10, "Back 10 seconds", 54.dp) { player.seekBack() }
+                                GlassBtn(Icons.Rounded.Replay10, "Back 10 seconds", 40.dp) { player.seekBack() }
                                 Box(
-                                    Modifier.size(70.dp).clip(CircleShape)
+                                    Modifier.size(52.dp).clip(CircleShape)
                                         .background(Brush.radialGradient(listOf(Color(0xFFA08CFF), Color(0xFF6C4DF0))))
                                         .border(1.dp, Color(0x55FFFFFF), CircleShape)
                                         .clickable { if (isPlaying) player.pause() else player.play() },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(42.dp))
+                                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(30.dp))
                                 }
-                                GlassBtn(Icons.Rounded.Forward10, "Forward 10 seconds", 54.dp) { player.seekForward() }
+                                GlassBtn(Icons.Rounded.Forward10, "Forward 10 seconds", 40.dp) { player.seekForward() }
                                 GlassBtn(Icons.Rounded.SkipNext, "Next") { if (current < items.lastIndex) playIndex(current + 1) }
                                 GlassBtn(Icons.Rounded.ClosedCaption, "Subtitles") { panel = Panel.Subs }
                                 GlassBtn(Icons.Rounded.Settings, "Settings") { panel = Panel.Main }
@@ -678,13 +679,13 @@ class MainActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize().clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { panel = null })
                 Box(
                     Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.safeDrawing)
-                        .padding(top = 68.dp, end = 12.dp, start = 12.dp).widthIn(max = 360.dp)
+                        .padding(top = 56.dp, end = 12.dp, start = 12.dp).widthIn(max = 300.dp)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(28.dp), color = Color(0xE61C1A24), contentColor = Color.White,
+                        shape = RoundedCornerShape(22.dp), color = Color(0xE61C1A24), contentColor = Color.White,
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x2EFFFFFF))
                     ) {
-                        Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp).heightIn(max = if (land) 260.dp else 520.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                        Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp).heightIn(max = if (land) 240.dp else 480.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                             when (p) {
                                 Panel.Main -> {
                                     val selSub = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_TEXT && it.isSelected }
@@ -825,9 +826,9 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun GlassBtn(icon: ImageVector, desc: String, size: androidx.compose.ui.unit.Dp = 48.dp, onClick: () -> Unit) {
-        Box(Modifier.size(size).clip(CircleShape).background(Glass).border(1.dp, Color(0x33FFFFFF), CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-            Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size * 0.5f))
+    private fun GlassBtn(icon: ImageVector, desc: String, size: androidx.compose.ui.unit.Dp = 40.dp, onClick: () -> Unit) {
+        Box(Modifier.size(size).clip(CircleShape).background(Glass).border(1.dp, Color(0x22FFFFFF), CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+            Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size * 0.52f))
         }
     }
 
@@ -873,34 +874,34 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Row1(icon: ImageVector, label: String, value: String, onClick: () -> Unit) {
         Column {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0x26FFFFFF)), contentAlignment = Alignment.Center) {
-                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp))
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(34.dp).clip(CircleShape).background(Color(0x1FFFFFFF)), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
-                Text(label, Modifier.padding(start = 14.dp).weight(1f), fontSize = 16.sp, color = Color.White)
-                Text(value, color = Color(0xB3FFFFFF), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 130.dp))
-                Icon(Icons.Rounded.ChevronRight, null, tint = Color.White)
+                Text(label, Modifier.padding(start = 12.dp).weight(1f), fontSize = 14.sp, color = Color.White)
+                Text(value, color = Color(0xB3FFFFFF), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 120.dp))
+                Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xCCFFFFFF), modifier = Modifier.size(18.dp))
             }
-            Box(Modifier.fillMaxWidth().padding(start = 64.dp, end = 10.dp).height(1.dp).background(Color(0x1FFFFFFF)))
+            Box(Modifier.fillMaxWidth().padding(start = 52.dp, end = 10.dp).height(1.dp).background(Color(0x1FFFFFFF)))
         }
     }
 
     @Composable
     private fun FlatSlider(value: Float, onChange: (Float) -> Unit, icon: ImageVector, modifier: Modifier) {
         val cb by rememberUpdatedState(onChange)
-        Column(modifier.width(48.dp).height(220.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, tint = Color.White, modifier = Modifier.size(30.dp))
+        Column(modifier.width(36.dp).height(150.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, null, tint = Color(0xE6FFFFFF), modifier = Modifier.size(20.dp))
             BoxWithConstraints(
-                Modifier.weight(1f).fillMaxWidth().padding(top = 14.dp)
+                Modifier.weight(1f).fillMaxWidth().padding(top = 10.dp)
                     .pointerInput(Unit) { detectTapGestures { o -> cb((1f - o.y / size.height).coerceIn(0f, 1f)) } }
                     .pointerInput(Unit) { detectVerticalDragGestures { ch, _ -> cb((1f - ch.position.y / size.height).coerceIn(0f, 1f)) } },
                 contentAlignment = Alignment.TopCenter
             ) {
                 val v = value.coerceIn(0f, 1f)
-                Box(Modifier.width(5.dp).fillMaxHeight().clip(RoundedCornerShape(3.dp)).background(Color(0x66FFFFFF)), contentAlignment = Alignment.BottomCenter) {
+                Box(Modifier.width(3.dp).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(Color(0x4DFFFFFF)), contentAlignment = Alignment.BottomCenter) {
                     Box(Modifier.fillMaxWidth().fillMaxHeight(v).background(Color(0xFF9B8CFF)))
                 }
-                Box(Modifier.offset(y = (maxHeight - 22.dp) * (1f - v)).size(22.dp).clip(CircleShape).background(Color(0xFFD9D0FF)))
+                Box(Modifier.offset(y = (maxHeight - 14.dp) * (1f - v)).size(14.dp).clip(CircleShape).background(Color(0xFFD9D0FF)))
             }
         }
     }
@@ -910,11 +911,11 @@ class MainActivity : ComponentActivity() {
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
                 .background(if (selected) Color(0x33FFFFFF) else Color.Transparent)
-                .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp),
+                .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(Modifier.size(24.dp)) { if (selected) Icon(Icons.Rounded.Check, null, tint = Accent) }
-            Text(label, Modifier.padding(start = 14.dp), fontSize = 15.5.sp)
+            Text(label, Modifier.padding(start = 12.dp), fontSize = 14.sp)
         }
     }
 

@@ -1,0 +1,29 @@
+name: Build APK
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild folder structure
+        run: |
+          mkdir -p proj
+          for f in $(find . -maxdepth 1 -type f ! -name 'README*'); do
+            n=$(basename "$f"); p=$(echo "$n" | sed 's#__#/#g')
+            mkdir -p "proj/$(dirname "$p")"; cp "$f" "proj/$p"
+          done
+          find proj -type f
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - run: yes | sdkmanager --licenses > /dev/null || true
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 8.14.3 }
+      - run: gradle assembleRelease --no-daemon
+        working-directory: proj
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoviePlay4K-apk
+          path: proj/app/build/outputs/apk/release/*.apk

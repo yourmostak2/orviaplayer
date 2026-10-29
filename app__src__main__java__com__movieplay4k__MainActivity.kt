@@ -479,8 +479,10 @@ class MainActivity : ComponentActivity() {
 
         BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
             val wide = maxWidth >= 600.dp
-            val land = maxWidth > maxHeight
-            LaunchedEffect(land) { if (land) fullscreen = true }
+            val isLand = maxWidth > maxHeight
+            val land = true // same minimal controls in portrait and landscape
+            val bs = if (maxWidth < 480.dp) 36.dp else 40.dp
+            LaunchedEffect(isLand) { if (isLand) fullscreen = true }
 
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -556,7 +558,9 @@ class MainActivity : ComponentActivity() {
                                 Text(hdr ?: "ORIGINAL", color = Color(0xB3FFFFFF), fontSize = 7.sp, lineHeight = 8.sp)
                             }
                             Spacer(Modifier.width(6.dp))
-                            GlassBtn(Icons.Rounded.MoreVert, "More") { panel = Panel.Main }
+                            GlassBtn(if (fullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen, "Fullscreen", bs) { fullscreen = !fullscreen }
+                            Spacer(Modifier.width(6.dp))
+                            GlassBtn(Icons.Rounded.MoreVert, "More", bs) { panel = Panel.Main }
                         }
 
                         // side sliders
@@ -625,14 +629,14 @@ class MainActivity : ComponentActivity() {
                                 )
                                 Text(fmt(dur), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(54.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                GlassBtn(Icons.AutoMirrored.Rounded.PlaylistPlay, "Playlist") { playlistOpen = true }
-                                GlassBtn(Icons.Rounded.SkipPrevious, "Previous") {
+                            Row(Modifier.fillMaxWidth().widthIn(max = 560.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                                GlassBtn(Icons.AutoMirrored.Rounded.PlaylistPlay, "Playlist", bs) { playlistOpen = true }
+                                GlassBtn(Icons.Rounded.SkipPrevious, "Previous", bs) {
                                     if (player.currentPosition > 5000 || current <= 0) player.seekTo(0) else playIndex(current - 1)
                                 }
-                                GlassBtn(Icons.Rounded.Replay10, "Back 10 seconds", 40.dp) { player.seekBack() }
+                                GlassBtn(Icons.Rounded.Replay10, "Back 10 seconds", bs) { player.seekBack() }
                                 Box(
-                                    Modifier.size(52.dp).clip(CircleShape)
+                                    Modifier.size(bs + 12.dp).clip(CircleShape)
                                         .background(Brush.radialGradient(listOf(Color(0xFFA08CFF), Color(0xFF6C4DF0))))
                                         .border(1.dp, Color(0x55FFFFFF), CircleShape)
                                         .clickable { if (isPlaying) player.pause() else player.play() },
@@ -640,10 +644,10 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(30.dp))
                                 }
-                                GlassBtn(Icons.Rounded.Forward10, "Forward 10 seconds", 40.dp) { player.seekForward() }
-                                GlassBtn(Icons.Rounded.SkipNext, "Next") { if (current < items.lastIndex) playIndex(current + 1) }
-                                GlassBtn(Icons.Rounded.ClosedCaption, "Subtitles") { panel = Panel.Subs }
-                                GlassBtn(Icons.Rounded.Settings, "Settings") { panel = Panel.Main }
+                                GlassBtn(Icons.Rounded.Forward10, "Forward 10 seconds", bs) { player.seekForward() }
+                                GlassBtn(Icons.Rounded.SkipNext, "Next", bs) { if (current < items.lastIndex) playIndex(current + 1) }
+                                GlassBtn(Icons.Rounded.ClosedCaption, "Subtitles", bs) { panel = Panel.Subs }
+                                GlassBtn(Icons.Rounded.Settings, "Settings", bs) { panel = Panel.Main }
                             }
                         } else Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 10.dp)) {
                             val shown = drag ?: if (dur > 0) pos.toFloat() / dur else 0f

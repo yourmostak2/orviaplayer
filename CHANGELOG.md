@@ -1,10 +1,19 @@
 # Changelog
 
-## 1.0.0
-- First release.
-- Material 3 player UI, follows device light/dark theme.
-- Playlist, add videos or a whole folder, remove items.
-- Swipe to seek, swipe left side for brightness, right side for volume.
-- Pinch to zoom, aspect ratio button, fullscreen, Picture-in-Picture.
-- Add subtitles (.srt .vtt .ass) from your phone.
-- Hardware decoding first, FFmpeg fallback for extra formats.
+## v1.0.0
+First public release.
+
+### Added
+- Material 3 player UI, light and dark theme follow the device
+- Playlist with add videos, add folder, remove and clear
+- Resume playback from where you left off
+- Gestures: swipe to seek, brightness (left), volume (right), double-tap +-10 s, pinch to zoom
+- Fullscreen and aspect ratio button (Fit, Fill, Stretch)
+- Subtitles from your phone (.srt, .vtt, .ass) and auto-load of subtitles with the same name
+- Audio track and playback speed (0.25x to 4x) menus
+- Picture-in-Picture
+- Hardware decoding first, FFmpeg fallback for more formats
+
+### Known limits
+- Not every codec or format is supported. If a file has no sound or no video, the app shows which codec is missing.
+- Installed over a different signing key? Uninstall the old build once, then install this one.

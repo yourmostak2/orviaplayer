@@ -27,6 +27,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -502,22 +503,83 @@ class MainActivity : ComponentActivity() {
                 }
             )
 
-            // tap = show/hide controls, double tap = seek / play-pause
+            // MX-Player style gestures: swipe horizontally = seek, left side vertical = brightness, right side vertical = volume
+            var hud by remember { mutableStateOf<Triple<ImageVector, String, Float?>?>(null) }
+            var gesturing by remember { mutableStateOf(false) }
+            LaunchedEffect(gesturing) { if (!gesturing) { delay(700); hud = null } }
+            val volSet: (Float) -> Unit = {
+                vol = it; muted = it == 0f
+                player.volume = if (muted) 0f else 1f
+                val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                audio.setStreamVolume(AudioManager.STREAM_MUSIC, (it * max).toInt(), 0)
+            }
             Box(
-                Modifier.fillMaxSize().pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { controls = !controls },
-                        onDoubleTap = { o ->
-                            val x = o.x / size.width
-                            when {
-                                x < 0.35f -> { player.seekBack(); say("−10 s") }
-                                x > 0.65f -> { player.seekForward(); say("+10 s") }
-                                else -> if (player.isPlaying) player.pause() else player.play()
+                Modifier.fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { controls = !controls },
+                            onDoubleTap = { o ->
+                                val x = o.x / size.width
+                                when {
+                                    x < 0.35f -> { player.seekBack(); say("−10 s") }
+                                    x > 0.65f -> { player.seekForward(); say("+10 s") }
+                                    else -> if (player.isPlaying) player.pause() else player.play()
+                                }
                             }
-                        }
-                    )
-                }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        var mode = 0; var ax = 0f; var ay = 0f; var sx = 0f
+                        var p0 = 0L; var b0 = 0f; var v0 = 0f; var target = 0L
+                        detectDragGestures(
+                            onDragStart = { o ->
+                                mode = 0; ax = 0f; ay = 0f; sx = o.x
+                                p0 = player.currentPosition; b0 = bright; v0 = if (muted) 0f else vol
+                            },
+                            onDrag = { change, d ->
+                                change.consume()
+                                ax += d.x; ay += d.y
+                                if (mode == 0 && (kotlin.math.abs(ax) > 24f || kotlin.math.abs(ay) > 24f)) {
+                                    mode = if (kotlin.math.abs(ax) > kotlin.math.abs(ay)) 1 else if (sx < size.width / 2f) 2 else 3
+                                    gesturing = true
+                                }
+                                when (mode) {
+                                    1 -> if (player.duration > 0) {
+                                        val deltaMs = (ax / size.width * 120_000f).toLong()
+                                        target = (p0 + deltaMs).coerceIn(0L, player.duration)
+                                        val sec = (target - p0) / 1000
+                                        hud = Triple(if (sec >= 0) Icons.Rounded.FastForward else Icons.Rounded.FastRewind,
+                                            (if (sec >= 0) "+" else "−") + kotlin.math.abs(sec) + " s   " + fmt(target), null)
+                                    }
+                                    2 -> { bright = (b0 - ay / size.height * 1.3f).coerceIn(0.02f, 1f); hud = Triple(Icons.Rounded.WbSunny, "${(bright * 100).toInt()}%", bright) }
+                                    3 -> { val nv = (v0 - ay / size.height * 1.3f).coerceIn(0f, 1f); volSet(nv)
+                                        hud = Triple(if (nv == 0f) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp, "${(nv * 100).toInt()}%", nv) }
+                                }
+                            },
+                            onDragEnd = { if (mode == 1) player.seekTo(target); gesturing = false },
+                            onDragCancel = { gesturing = false }
+                        )
+                    }
             )
+            hud?.let { (ic, txt, lvl) ->
+                Column(
+                    Modifier.align(Alignment.Center).offset(y = (-40).dp).clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xB3141218)).padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(ic, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(txt, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
+                    if (lvl != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Box(Modifier.width(120.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x4DFFFFFF))) {
+                            Box(Modifier.fillMaxHeight().fillMaxWidth(lvl.coerceIn(0f, 1f)).background(Color(0xFF9B8CFF)))
+                        }
+                    }
+                }
+            }
 
             if (buffering) CircularProgressIndicator(Modifier.align(Alignment.Center), color = Accent)
             flash?.let {
@@ -531,7 +593,7 @@ class MainActivity : ComponentActivity() {
             AnimatedVisibility(controls && !inPip, enter = fadeIn(), exit = fadeOut()) {
                 Box(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxWidth().height(90.dp).background(Brush.verticalGradient(listOf(Color(0x80000000), Color.Transparent))))
-                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (land) 150.dp else 260.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xA6000000)))))
+                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (land) 190.dp else 260.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xA6000000)))))
 
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 12.dp)) {
                         // top bar
@@ -549,8 +611,7 @@ class MainActivity : ComponentActivity() {
                                 Text(meta, color = Color(0xB3FFFFFF), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             Column(
-                                Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(Glass)
-                                    .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(18.dp))
+                                Modifier.height(36.dp).glass(RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp))
                                     .clickable { panel = Panel.Info }.padding(horizontal = 12.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                             ) {
@@ -558,37 +619,7 @@ class MainActivity : ComponentActivity() {
                                 Text(hdr ?: "ORIGINAL", color = Color(0xB3FFFFFF), fontSize = 7.sp, lineHeight = 8.sp)
                             }
                             Spacer(Modifier.width(6.dp))
-                            GlassBtn(if (fullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen, "Fullscreen", bs) { fullscreen = !fullscreen }
-                            Spacer(Modifier.width(6.dp))
                             GlassBtn(Icons.Rounded.MoreVert, "More", bs) { panel = Panel.Main }
-                        }
-
-                        // side sliders
-                        run {
-                            if (land) FlatSlider(bright, { bright = it }, Icons.Rounded.WbSunny, Modifier.align(Alignment.CenterStart).offset(y = (-20).dp))
-                            else VSlider(
-                                bright, { bright = it }, Icons.Rounded.WbSunny,
-                                Modifier.align(Alignment.CenterStart)
-                            )
-                            val volIcon = if (muted || vol == 0f) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp
-                            val volSet: (Float) -> Unit = {
-                                vol = it; muted = it == 0f
-                                player.volume = if (muted) 0f else 1f
-                                val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                                audio.setStreamVolume(AudioManager.STREAM_MUSIC, (it * max).toInt(), 0)
-                            }
-                            if (land) FlatSlider(if (muted) 0f else vol, volSet, volIcon, Modifier.align(Alignment.CenterEnd).offset(y = (-20).dp))
-                            else VSlider(
-                                if (muted) 0f else vol,
-                                {
-                                    vol = it; muted = it == 0f
-                                    player.volume = if (muted) 0f else 1f
-                                    val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, (it * max).toInt(), 0)
-                                },
-                                if (muted || vol == 0f) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
-                                Modifier.align(Alignment.CenterEnd)
-                            )
                         }
 
                         // center transport
@@ -615,7 +646,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // bottom: seek + dock
-                        if (land) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (land) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             val shown = drag ?: if (dur > 0) pos.toFloat() / dur else 0f
                             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(fmt(if (drag != null) (drag!! * dur).toLong() else pos), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(50.dp))
@@ -629,25 +660,26 @@ class MainActivity : ComponentActivity() {
                                 )
                                 Text(fmt(dur), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(54.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                             }
-                            Row(Modifier.fillMaxWidth().widthIn(max = 560.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
-                                GlassBtn(Icons.AutoMirrored.Rounded.PlaylistPlay, "Playlist", bs) { playlistOpen = true }
-                                GlassBtn(Icons.Rounded.SkipPrevious, "Previous", bs) {
-                                    if (player.currentPosition > 5000 || current <= 0) player.seekTo(0) else playIndex(current - 1)
+                            Spacer(Modifier.height(4.dp))
+                            Box(Modifier.widthIn(max = 560.dp).fillMaxWidth().height(bs + 14.dp).glass(CircleShape), contentAlignment = Alignment.Center) {
+                                Row(Modifier.fillMaxSize().padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                                    Tap(Icons.AutoMirrored.Rounded.PlaylistPlay, "Playlist", bs) { playlistOpen = true }
+                                    Tap(Icons.Rounded.SkipPrevious, "Previous", bs) {
+                                        if (player.currentPosition > 5000 || current <= 0) player.seekTo(0) else playIndex(current - 1)
+                                    }
+                                    Tap(Icons.Rounded.Replay10, "Back 10 seconds", bs) { player.seekBack() }
+                                    Box(
+                                        Modifier.requiredSize(bs + 22.dp).glass(CircleShape, 1).clip(CircleShape)
+                                            .clickable { if (isPlaying) player.pause() else player.play() },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(28.dp))
+                                    }
+                                    Tap(Icons.Rounded.Forward10, "Forward 10 seconds", bs) { player.seekForward() }
+                                    Tap(Icons.Rounded.SkipNext, "Next", bs) { if (current < items.lastIndex) playIndex(current + 1) }
+                                    Tap(Icons.Rounded.ClosedCaption, "Subtitles", bs) { panel = Panel.Subs }
+                                    Tap(if (fullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen, "Fullscreen", bs) { fullscreen = !fullscreen }
                                 }
-                                GlassBtn(Icons.Rounded.Replay10, "Back 10 seconds", bs) { player.seekBack() }
-                                Box(
-                                    Modifier.size(bs + 12.dp).clip(CircleShape)
-                                        .background(Brush.radialGradient(listOf(Color(0xFFA08CFF), Color(0xFF6C4DF0))))
-                                        .border(1.dp, Color(0x55FFFFFF), CircleShape)
-                                        .clickable { if (isPlaying) player.pause() else player.play() },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(30.dp))
-                                }
-                                GlassBtn(Icons.Rounded.Forward10, "Forward 10 seconds", bs) { player.seekForward() }
-                                GlassBtn(Icons.Rounded.SkipNext, "Next", bs) { if (current < items.lastIndex) playIndex(current + 1) }
-                                GlassBtn(Icons.Rounded.ClosedCaption, "Subtitles", bs) { panel = Panel.Subs }
-                                GlassBtn(Icons.Rounded.Settings, "Settings", bs) { panel = Panel.Main }
                             }
                         } else Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 10.dp)) {
                             val shown = drag ?: if (dur > 0) pos.toFloat() / dur else 0f
@@ -686,8 +718,8 @@ class MainActivity : ComponentActivity() {
                         .padding(top = 56.dp, end = 12.dp, start = 12.dp).widthIn(max = 300.dp)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(22.dp), color = Color(0xE61C1A24), contentColor = Color.White,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x2EFFFFFF))
+                        shape = RoundedCornerShape(22.dp), color = Color.Transparent, contentColor = Color.White,
+                        modifier = Modifier.glass(RoundedCornerShape(22.dp), 2)
                     ) {
                         Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp).heightIn(max = if (land) 240.dp else 480.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                             when (p) {
@@ -718,7 +750,7 @@ class MainActivity : ComponentActivity() {
                                                 .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, 0)).build(); panel = null
                                         }
                                     }
-                                    Opt("Add subtitle file (.srt .vtt .ass)", false) { panel = null; pickSub.launch(arrayOf("*/*")) }
+                                    Opt("＋ Add subtitle from phone (.srt .vtt .ass)", false) { panel = null; pickSub.launch(arrayOf("*/*")) }
                                 }
                                 Panel.Audio -> {
                                     Head("Audio track") { panel = Panel.Main }
@@ -829,9 +861,38 @@ class MainActivity : ComponentActivity() {
         return if (h > 0) "%d:%02d:%02d".format(h, m, x) else "%d:%02d".format(m, x)
     }
 
+    /** Liquid-glass look: dark tint + frosted white gradient + specular rim. */
+    private fun Modifier.glass(shape: androidx.compose.ui.graphics.Shape, level: Int = 0): Modifier = this
+        .background(
+            color = when (level) { 1 -> Color(0x00000000); 2 -> Color(0x99101014); else -> Color(0x40000000) },
+            shape = shape
+        )
+        .background(
+            brush = Brush.verticalGradient(
+                when (level) {
+                    1 -> listOf(Color(0xF08B7CFF), Color(0xF0372A9E))
+                    2 -> listOf(Color(0x33FFFFFF), Color(0x14FFFFFF))
+                    else -> listOf(Color(0x47FFFFFF), Color(0x1AFFFFFF))
+                }
+            ),
+            shape = shape
+        )
+        .border(
+            1.2.dp,
+            Brush.linearGradient(listOf(Color(0xCCFFFFFF), Color(0x14FFFFFF), Color(0x80FFFFFF), Color(0x14FFFFFF))),
+            shape
+        )
+
+    @Composable
+    private fun Tap(icon: ImageVector, desc: String, size: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
+        Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+            Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size * 0.55f))
+        }
+    }
+
     @Composable
     private fun GlassBtn(icon: ImageVector, desc: String, size: androidx.compose.ui.unit.Dp = 40.dp, onClick: () -> Unit) {
-        Box(Modifier.size(size).clip(CircleShape).background(Glass).border(1.dp, Color(0x22FFFFFF), CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(size).glass(CircleShape).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
             Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size * 0.52f))
         }
     }

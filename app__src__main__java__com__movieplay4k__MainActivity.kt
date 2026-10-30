@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
 
         // FFmpeg software decoders are used whenever the phone's hardware decoder cannot handle a format.
         val renderers = NextRenderersFactory(this)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             .setEnableDecoderFallback(true)
         // Many MKV/AVI/TS/MP3 files have no seek index; this makes them seekable too.
         val extractors = DefaultExtractorsFactory()
@@ -138,6 +138,7 @@ class MainActivity : ComponentActivity() {
             .setConstantBitrateSeekingAlwaysEnabled(true)
         player = ExoPlayer.Builder(this, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this, extractors))
+            .setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)
             .build()
@@ -692,8 +693,7 @@ class MainActivity : ComponentActivity() {
                                     value = shown.coerceIn(0f, 1f),
                                     onValueChange = { drag = it },
                                     onValueChangeFinished = { drag?.let { f -> if (dur > 0) player.seekTo((f * dur).toLong()) }; drag = null },
-                                    modifier = Modifier.weight(1f).height(24.dp),
-                                    thumb = { SliderDefaults.Thumb(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, thumbSize = androidx.compose.ui.unit.DpSize(12.dp, 12.dp), colors = SliderDefaults.colors(thumbColor = Color.White)) },
+                                    modifier = Modifier.weight(1f).height(32.dp),
                                     colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color(0xFF9B8CFF), inactiveTrackColor = Color(0x40FFFFFF))
                                 )
                                 Text(fmt(dur), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(54.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)

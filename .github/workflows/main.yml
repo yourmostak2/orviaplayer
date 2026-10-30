@@ -2,21 +2,25 @@ name: Build APK
 on:
   push:
     branches: [main, master]
+    tags: ['v*']
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - name: Rebuild folder structure
         run: |
           mkdir -p proj
-          for f in $(find . -maxdepth 1 -type f ! -name 'README*' ! -name 'keystore.b64'); do
+          for f in $(find . -maxdepth 1 -type f \( -name '*.kts' -o -name '*.properties' -o -name 'app__*' \)); do
             n=$(basename "$f"); p=$(echo "$n" | sed 's#__#/#g')
             mkdir -p "proj/$(dirname "$p")"; cp "$f" "proj/$p"
           done
-          base64 -d keystore.b64 > proj/app/orvia.jks
-          find proj -type f
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > proj/app/orvia.jks
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - run: yes | sdkmanager --licenses > /dev/null || true
@@ -24,7 +28,15 @@ jobs:
         with: { gradle-version: 8.14.3 }
       - run: gradle assembleRelease --no-daemon
         working-directory: proj
+      - name: Name the APK
+        run: mv proj/app/build/outputs/apk/release/app-release.apk ORVIA-player-${{ github.ref_name }}.apk
       - uses: actions/upload-artifact@v4
         with:
           name: ORVIA-player-apk
-          path: proj/app/build/outputs/apk/release/*.apk
+          path: ORVIA-player-*.apk
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ORVIA-player-*.apk
+          generate_release_notes: true

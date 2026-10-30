@@ -110,6 +110,11 @@ class MainActivity : ComponentActivity() {
     private var panel by mutableStateOf<Panel?>(null)
     private var fullscreen by mutableStateOf(false)
     private var inPip by mutableStateOf(false)
+    private var dVideoDec by mutableStateOf("-")
+    private var dAudioDec by mutableStateOf("-")
+    private var dErr by mutableStateOf("none")
+    private var dUnderrun by mutableIntStateOf(0)
+    private var dDropped by mutableIntStateOf(0)
 
     private val pickFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         addUris(uris)
@@ -142,6 +147,15 @@ class MainActivity : ComponentActivity() {
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)
             .build()
+        player.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onVideoDecoderInitialized(e: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, name: String, t: Long, d: Long) { dVideoDec = name }
+            override fun onAudioDecoderInitialized(e: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, name: String, t: Long, d: Long) { dAudioDec = name }
+            override fun onAudioSinkError(e: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, ex: Exception) { dErr = "audio sink: ${ex.message}" }
+            override fun onAudioCodecError(e: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, ex: Exception) { dErr = "audio codec: ${ex.message}" }
+            override fun onVideoCodecError(e: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, ex: Exception) { dErr = "video codec: ${ex.message}" }
+            override fun onAudioUnderrun(e: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, size: Int, ms: Long, since: Long) { dUnderrun++ }
+            override fun onDroppedVideoFrames(e: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, n: Int, ms: Long) { dDropped += n }
+        })
         player.setAudioAttributes(androidx.media3.common.AudioAttributes.DEFAULT, true)
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -811,7 +825,14 @@ class MainActivity : ComponentActivity() {
                                         "Video codec" to (vf?.codecs ?: vf?.sampleMimeType ?: "-"),
                                         "Video bitrate" to (vf?.bitrate?.takeIf { it > 0 }?.let { "%.1f Mbps".format(it / 1e6) } ?: "-"),
                                         "Audio codec" to (af?.codecs ?: af?.sampleMimeType ?: "-"),
-                                        "Audio channels" to (af?.channelCount?.takeIf { it > 0 }?.toString() ?: "-")
+                                        "Audio channels" to (af?.channelCount?.takeIf { it > 0 }?.toString() ?: "-"),
+                                        "Video decoder" to dVideoDec,
+                                        "Audio decoder" to dAudioDec,
+                                        "Seekable" to player.isCurrentMediaItemSeekable.toString(),
+                                        "Dropped frames" to dDropped.toString(),
+                                        "Audio underruns" to dUnderrun.toString(),
+                                        "Last error" to dErr,
+                                        "Player state" to listOf("idle", "buffering", "ready", "ended")[player.playbackState - 1]
                                     )
                                     rows.forEach { (k, v) -> Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
                                         Text(k, Modifier.weight(0.45f), color = Color(0xB3FFFFFF), fontSize = 14.sp)

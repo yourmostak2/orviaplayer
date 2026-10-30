@@ -75,6 +75,8 @@ import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
@@ -130,7 +132,12 @@ class MainActivity : ComponentActivity() {
         val renderers = NextRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true)
+        // Many MKV/AVI/TS/MP3 files have no seek index; this makes them seekable too.
+        val extractors = DefaultExtractorsFactory()
+            .setConstantBitrateSeekingEnabled(true)
+            .setConstantBitrateSeekingAlwaysEnabled(true)
         player = ExoPlayer.Builder(this, renderers)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this, extractors))
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)
             .build()
@@ -429,7 +436,7 @@ class MainActivity : ComponentActivity() {
         var muted by remember { mutableStateOf(false) }
         var zoom by remember { mutableFloatStateOf(1f) }
         var flash by remember { mutableStateOf<Pair<String, Long>?>(null) }
-        fun say(t: String) { flash = t to System.nanoTime() }
+        fun say(t: String, ms: Long = 1300) { flash = t to ms }
 
         DisposableEffect(Unit) {
             val l = object : Player.Listener {
@@ -440,7 +447,15 @@ class MainActivity : ComponentActivity() {
                         if (current < items.lastIndex) playIndex(current + 1) else controls = true
                     }
                 }
-                override fun onTracksChanged(t: Tracks) { tracks = t }
+                override fun onTracksChanged(t: Tracks) {
+                    tracks = t
+                    val aud = t.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
+                    val vid = t.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
+                    if (aud.isNotEmpty() && aud.none { it.isSelected })
+                        say("No sound: audio codec not supported (${aud[0].getTrackFormat(0).sampleMimeType?.substringAfter('/')})", 8000)
+                    else if (vid.isNotEmpty() && vid.none { it.isSelected })
+                        say("No video: codec not supported (${vid[0].getTrackFormat(0).sampleMimeType?.substringAfter('/')})", 8000)
+                }
                 override fun onVideoSizeChanged(v: VideoSize) { vsize = v }
                 override fun onPlaybackParametersChanged(p: androidx.media3.common.PlaybackParameters) { speed = p.speed }
                 override fun onPlayerError(e: PlaybackException) { say("Can't play this file (${e.errorCodeName})") }
@@ -458,7 +473,7 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(controls, isPlaying, panel, playlistOpen) {
             if (controls && isPlaying && panel == null && !playlistOpen) { delay(3500); controls = false }
         }
-        LaunchedEffect(flash) { if (flash != null) { delay(1300); flash = null } }
+        LaunchedEffect(flash) { flash?.let { delay(it.second); flash = null } }
         LaunchedEffect(bright) {
             window.attributes = window.attributes.also { it.screenBrightness = bright.coerceIn(0.02f, 1f) }
         }

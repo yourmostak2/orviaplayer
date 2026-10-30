@@ -29,6 +29,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -423,6 +427,7 @@ class MainActivity : ComponentActivity() {
             mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC))
         }
         var muted by remember { mutableStateOf(false) }
+        var zoom by remember { mutableFloatStateOf(1f) }
         var flash by remember { mutableStateOf<Pair<String, Long>?>(null) }
         fun say(t: String) { flash = t to System.nanoTime() }
 
@@ -486,7 +491,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(isLand) { if (isLand) fullscreen = true }
 
             AndroidView(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = zoom, scaleY = zoom),
                 factory = { c ->
                     PlayerView(c).apply {
                         useController = false
@@ -559,6 +564,24 @@ class MainActivity : ComponentActivity() {
                             onDragEnd = { if (mode == 1) player.seekTo(target); gesturing = false },
                             onDragCancel = { gesturing = false }
                         )
+                    }
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            do {
+                                val ev = awaitPointerEvent()
+                                if (ev.changes.size >= 2) {
+                                    val z = ev.calculateZoom()
+                                    if (z != 1f) {
+                                        zoom = (zoom * z).coerceIn(0.5f, 4f)
+                                        hud = Triple(Icons.Rounded.ZoomIn, "${(zoom * 100).toInt()}%", null)
+                                        gesturing = true
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                }
+                            } while (ev.changes.any { it.pressed })
+                            gesturing = false
+                        }
                     }
             )
             hud?.let { (ic, txt, lvl) ->
@@ -661,25 +684,17 @@ class MainActivity : ComponentActivity() {
                                 Text(fmt(dur), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(54.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                             }
                             Spacer(Modifier.height(4.dp))
-                            Box(Modifier.widthIn(max = 560.dp).fillMaxWidth().height(bs + 14.dp).glass(CircleShape), contentAlignment = Alignment.Center) {
-                                Row(Modifier.fillMaxSize().padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    Tap(Icons.AutoMirrored.Rounded.PlaylistPlay, "Playlist", bs) { playlistOpen = true }
-                                    Tap(Icons.Rounded.SkipPrevious, "Previous", bs) {
-                                        if (player.currentPosition > 5000 || current <= 0) player.seekTo(0) else playIndex(current - 1)
-                                    }
-                                    Tap(Icons.Rounded.Replay10, "Back 10 seconds", bs) { player.seekBack() }
-                                    Box(
-                                        Modifier.requiredSize(bs + 22.dp).glass(CircleShape, 1).clip(CircleShape)
-                                            .clickable { if (isPlaying) player.pause() else player.play() },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(28.dp))
-                                    }
-                                    Tap(Icons.Rounded.Forward10, "Forward 10 seconds", bs) { player.seekForward() }
-                                    Tap(Icons.Rounded.SkipNext, "Next", bs) { if (current < items.lastIndex) playIndex(current + 1) }
-                                    Tap(Icons.Rounded.ClosedCaption, "Subtitles", bs) { panel = Panel.Subs }
-                                    Tap(if (fullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen, "Fullscreen", bs) { fullscreen = !fullscreen }
+                            Row(Modifier.widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                                Tap(Icons.AutoMirrored.Rounded.PlaylistPlay, "Playlist", bs) { playlistOpen = true }
+                                Tap(Icons.Rounded.SkipPrevious, "Previous", bs) {
+                                    if (player.currentPosition > 5000 || current <= 0) player.seekTo(0) else playIndex(current - 1)
                                 }
+                                Box(Modifier.size(bs + 14.dp).clip(CircleShape).clickable { if (isPlaying) player.pause() else player.play() }, contentAlignment = Alignment.Center) {
+                                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(38.dp))
+                                }
+                                Tap(Icons.Rounded.SkipNext, "Next", bs) { if (current < items.lastIndex) playIndex(current + 1) }
+                                Tap(Icons.Rounded.AspectRatio, "Aspect ratio", bs) { fit = (fit + 1) % 3; zoom = 1f; say(FITS[fit]) }
+                                Tap(if (fullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen, "Fullscreen", bs) { fullscreen = !fullscreen }
                             }
                         } else Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 10.dp)) {
                             val shown = drag ?: if (dur > 0) pos.toFloat() / dur else 0f

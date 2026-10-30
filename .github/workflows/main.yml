@@ -11,10 +11,11 @@ jobs:
       - name: Rebuild folder structure
         run: |
           mkdir -p proj
-          for f in $(find . -maxdepth 1 -type f ! -name 'README*'); do
+          for f in $(find . -maxdepth 1 -type f ! -name 'README*' ! -name 'keystore.b64'); do
             n=$(basename "$f"); p=$(echo "$n" | sed 's#__#/#g')
             mkdir -p "proj/$(dirname "$p")"; cp "$f" "proj/$p"
           done
+          base64 -d keystore.b64 > proj/app/orvia.jks
           find proj -type f
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
@@ -25,5 +26,5 @@ jobs:
         working-directory: proj
       - uses: actions/upload-artifact@v4
         with:
-          name: MoviePlay4K-apk
+          name: ORVIA-player-apk
           path: proj/app/build/outputs/apk/release/*.apk

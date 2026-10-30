@@ -9,20 +9,29 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.movieplay4k"
+        applicationId = "com.orvia.player"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "1.0"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+    }
+
+    signingConfigs {
+        create("orvia") {
+            storeFile = file("orvia.jks")
+            storePassword = "orvia2026"
+            keyAlias = "orvia"
+            keyPassword = "orvia2026"
+        }
     }
 
     buildTypes {
         release {
             // R8 is off on purpose: the FFmpeg decoder uses JNI and must not be stripped.
             isMinifyEnabled = false
-            // Signed with the debug key so the APK installs directly. Use your own key for Play Store.
-            signingConfig = signingConfigs.getByName("debug")
+            // Fixed signing key so every new build installs as an update over the previous one.
+            signingConfig = signingConfigs.getByName("orvia")
         }
     }
     compileOptions {

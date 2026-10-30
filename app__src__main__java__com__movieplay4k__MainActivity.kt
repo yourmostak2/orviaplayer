@@ -385,7 +385,7 @@ class MainActivity : ComponentActivity() {
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(58.dp)) }
             Spacer(Modifier.height(18.dp))
-            Text("MoviePlay4K", fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+            Text("ORVIA player", fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             Text(
                 "Plays your videos in original quality.\nNothing is re-encoded or uploaded.",

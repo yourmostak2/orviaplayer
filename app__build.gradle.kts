@@ -20,9 +20,9 @@ android {
     signingConfigs {
         create("orvia") {
             storeFile = file("orvia.jks")
-            storePassword = "orvia2026"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "unset"
             keyAlias = "orvia"
-            keyPassword = "orvia2026"
+            keyPassword = System.getenv("KEYSTORE_PASSWORD") ?: "unset"
         }
     }
 

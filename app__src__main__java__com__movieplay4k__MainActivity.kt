@@ -517,7 +517,7 @@ class MainActivity : ComponentActivity() {
             val wide = maxWidth >= 600.dp
             val isLand = maxWidth > maxHeight
             val land = true // same minimal controls in portrait and landscape
-            val bs = if (maxWidth < 480.dp) 36.dp else 40.dp
+            val bs = if (maxWidth < 480.dp) 30.dp else 32.dp
             LaunchedEffect(isLand) { if (isLand) fullscreen = true }
 
             AndroidView(
@@ -645,31 +645,31 @@ class MainActivity : ComponentActivity() {
 
             AnimatedVisibility(controls && !inPip, enter = fadeIn(), exit = fadeOut()) {
                 Box(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxWidth().height(90.dp).background(Brush.verticalGradient(listOf(Color(0x80000000), Color.Transparent))))
-                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (land) 190.dp else 260.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xA6000000)))))
+                    Box(Modifier.fillMaxWidth().height(64.dp).background(Brush.verticalGradient(listOf(Color(0x80000000), Color.Transparent))))
+                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(110.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xA6000000)))))
 
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 12.dp)) {
                         // top bar
-                        Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (land) IconButton({ if (fullscreen) fullscreen = false else stopPlayback() }) {
-                                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(22.dp))
+                                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
                             } else GlassBtn(Icons.AutoMirrored.Rounded.ArrowBack, "Back") {
                                 if (fullscreen) fullscreen = false else stopPlayback()
                             }
                             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                                 Text(
                                     items.getOrNull(current)?.name?.substringBeforeLast('.') ?: "", color = Color.White,
-                                    fontSize = if (land) 16.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis
+                                    fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis
                                 )
-                                Text(meta, color = Color(0xB3FFFFFF), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(meta, color = Color(0xB3FFFFFF), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             Column(
-                                Modifier.height(36.dp).glass(RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp))
+                                Modifier.height(28.dp).glass(RoundedCornerShape(14.dp)).clip(RoundedCornerShape(14.dp))
                                     .clickable { panel = Panel.Info }.padding(horizontal = 12.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                             ) {
-                                Text(q, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 14.sp)
-                                Text(hdr ?: "ORIGINAL", color = Color(0xB3FFFFFF), fontSize = 7.sp, lineHeight = 8.sp)
+                                Text(q, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, lineHeight = 11.sp)
+                                Text(hdr ?: "ORIGINAL", color = Color(0xB3FFFFFF), fontSize = 6.sp, lineHeight = 6.sp)
                             }
                             Spacer(Modifier.width(6.dp))
                             GlassBtn(Icons.Rounded.MoreVert, "More", bs) { panel = Panel.Main }
@@ -699,27 +699,27 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // bottom: seek + dock
-                        if (land) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (land) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             val shown = drag ?: if (dur > 0) pos.toFloat() / dur else 0f
                             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(fmt(if (drag != null) (drag!! * dur).toLong() else pos), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(50.dp))
+                                Text(fmt(if (drag != null) (drag!! * dur).toLong() else pos), color = Color(0xE6FFFFFF), fontSize = 11.sp, modifier = Modifier.width(44.dp))
                                 Slider(
                                     value = shown.coerceIn(0f, 1f),
                                     onValueChange = { drag = it },
                                     onValueChangeFinished = { drag?.let { f -> if (dur > 0) player.seekTo((f * dur).toLong()) }; drag = null },
-                                    modifier = Modifier.weight(1f).height(32.dp),
+                                    modifier = Modifier.weight(1f).height(22.dp),
                                     colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color(0xFF9B8CFF), inactiveTrackColor = Color(0x40FFFFFF))
                                 )
-                                Text(fmt(dur), color = Color(0xE6FFFFFF), fontSize = 12.sp, modifier = Modifier.width(54.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                                Text(fmt(dur), color = Color(0xE6FFFFFF), fontSize = 11.sp, modifier = Modifier.width(48.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                             }
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(0.dp))
                             Row(Modifier.widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
                                 Tap(Icons.AutoMirrored.Rounded.PlaylistPlay, "Playlist", bs) { playlistOpen = true }
                                 Tap(Icons.Rounded.SkipPrevious, "Previous", bs) {
                                     if (player.currentPosition > 5000 || current <= 0) player.seekTo(0) else playIndex(current - 1)
                                 }
-                                Box(Modifier.size(bs + 14.dp).clip(CircleShape).clickable { if (isPlaying) player.pause() else player.play() }, contentAlignment = Alignment.Center) {
-                                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(38.dp))
+                                Box(Modifier.size(bs + 10.dp).clip(CircleShape).clickable { if (isPlaying) player.pause() else player.play() }, contentAlignment = Alignment.Center) {
+                                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", tint = Color.White, modifier = Modifier.size(28.dp))
                                 }
                                 Tap(Icons.Rounded.SkipNext, "Next", bs) { if (current < items.lastIndex) playIndex(current + 1) }
                                 Tap(Icons.Rounded.AspectRatio, "Aspect ratio", bs) { fit = (fit + 1) % 3; zoom = 1f; say(FITS[fit]) }
@@ -937,14 +937,14 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Tap(icon: ImageVector, desc: String, size: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
         Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-            Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size * 0.55f))
+            Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size * 0.62f))
         }
     }
 
     @Composable
     private fun GlassBtn(icon: ImageVector, desc: String, size: androidx.compose.ui.unit.Dp = 40.dp, onClick: () -> Unit) {
         Box(Modifier.size(size).glass(CircleShape).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-            Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size * 0.52f))
+            Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size * 0.58f))
         }
     }
 
